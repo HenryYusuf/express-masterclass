@@ -1,8 +1,11 @@
+require("dotenv").config();
 const express = require("express");
+const helmet = require("helmet");
+const cors = require("cors");
 
 // --- SETUP ---
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
 // --- CUSTOM MIDDLEWARE ---
 
@@ -15,20 +18,27 @@ const logger = (req, res, next) => {
 
 // --- GLOBAL MIDDLEWARE ---
 
+// The order of global middleware matters.
+// CORS: Handle cross-origin request first.
+app.use(cors());
+
+// Helmet: Apply security headers early.
+app.use(helmet());
+
 // We MUST register our middleware before our routes. The order is importabt.
+// Logger: Log the request.
 app.use(logger); // Use our custom logger for all requests
 
 // This is a built-in Express middleware.
 // It parses incoming request with JSON payloads. Without this, req.body would be undefined.
+// Body Parser: Parse JSON bodies
 app.use(express.json());
 
 // --- ROUTES ---
-
-// Import the user routes from the other filel
-const userRoutes = require("./routes/users");
-
 // Mount the user routes.
 // Any request starting with '/api/users' will be handled by the 'userRoutes' router.
+// Import the user routes from the other file
+const userRoutes = require("./routes/users");
 app.use("/api/users", userRoutes);
 
 // --- CATCH-ALL ERROR HANDLING MIDDLEWARE ---
@@ -47,5 +57,5 @@ app.use((err, req, res, next) => {
 
 // Start the server
 app.listen(PORT, () => {
-  console.log(`Server is running on http://localhost:${PORT}`);
+  console.log(`Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
 });
