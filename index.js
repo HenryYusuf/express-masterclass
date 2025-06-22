@@ -31,6 +31,20 @@ const userRoutes = require("./routes/users");
 // Any request starting with '/api/users' will be handled by the 'userRoutes' router.
 app.use("/api/users", userRoutes);
 
+// --- CATCH-ALL ERROR HANDLING MIDDLEWARE ---
+// This middleware will run if any route handler calls next(error)
+app.use((err, req, res, next) => {
+  // Log the error for debugging purposes.
+  // In a real production app, you'd log to a file or a logging service.
+  console.error(err.stack);
+
+  // Send a generic, user-friendly error response.
+  // Don't leak implementation details to the client.
+  res.status(500).json({
+    message: "Something went wrong on the server. Please try again later.",
+  });
+});
+
 // Start the server
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);

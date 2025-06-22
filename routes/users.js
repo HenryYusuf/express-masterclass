@@ -3,21 +3,30 @@ const express = require("express");
 // Create a new router object
 const router = express.Router();
 
-// In-memory "Database"
-let users = [
-  { id: 1, name: "Henry" },
-  { id: 2, name: "Yusuf" },
-];
+// Node.js built-in modules for working with the file system
+const fs = require("fs/promises");
+const path = require("path");
+
+// Path to our JSON database file
+const DATA_FILE = path.join(__dirname, "..", "data", "users.json");
 
 // --- ROUTES ---
 
 // **This route's path is now '/', but it will be mounted under '/api/users' in index.js
 // **description: Get all users
 // **route:       GET /api/users
-router.get("/", (req, res) => {
-  // For APIs, always use res.json().
-  // It automatically sets the correct Content-Type header to 'application/json'.
-  res.json(users);
+router.get("/", async (req, res, next) => {
+  try {
+    // Read the contents of the database file asynchronously
+    const data = await fs.readFile(DATA_FILE, "utf-8");
+    // Parse the JSON data into a Javascript array
+    const users = JSON.parse(data);
+    res.json(users);
+  } catch (error) {
+    // If anything goes wrong (e.g., file not found, bad JSON),
+    // pass the error to our centralized error handler.
+    next(error);
+  }
 });
 
 // **description: Get a single user by their ID
@@ -44,28 +53,37 @@ router.get("/:id", (req, res) => {
 
 // **description: Create a new user
 // **route:       POST /api/users
-router.post("/", (req, res) => {
-  // We need the 'express.json()' middleware in index.js for this to work
-  // req.body will contain the parsed JSON data.
-  const newUser = req.body;
+router.post("/", async (req, res, next) => {
+  try {
+    const { name } = req.body;
+    if (!name) {
+      // For user input errors, we can send a specific error right away.
+      return res.status(400).json({
+        message: "User name is required.",
+      });
+    }
 
-  // !   Basic validation. Never trust user input.
-  if (!newUser.name) {
-    return res.status(400).json({
-      message: "User name is required",
-    });
+    // Read the current users
+    const data = await fs.readFile(DATA_FILE, "utf-8");
+    const users = JSON.parse(data);
+
+    // Create the new user
+    const newUser = {
+      // Simple ID generation (find the max current ID and add 1)
+      id: Math.max(...users.map((u) => u.id)) + 1,
+      name: name,
+    };
+
+    users.push(newUser);
+
+    // Write the entire updated array back to the file
+    // The 'null, 2' arguments pretty-print the JSON to make it readable
+    await fs.writeFile(DATA_FILE, JSON.stringify(users, null, 2));
+
+    res.status(201).json(newUser);
+  } catch (error) {
+    next(error);
   }
-
-  // Create a new user object with an ID
-  const userToAdd = {
-    id: users.length + 1, // Simple ID generation
-    name: newUser.name,
-  };
-
-  users.push(userToAdd);
-
-  // Send a 201 "Created" status and the new user object.
-  res.status(201).json(userToAdd);
 });
 
 // Export the router
