@@ -31,24 +31,33 @@ router.get("/", async (req, res, next) => {
 
 // **description: Get a single user by their ID
 // **route:       GET /api/users/:id
-router.get("/:id", (req, res) => {
-  // req.params contains route parameters. The 'id' comes from the ':id' in the URL.
-  // It's a string by default, so we parse it to an integer.
-  const userId = parseInt(req.params.id);
+router.get("/:id", async (req, res, next) => {
+  try {
+    // req.params contains route parameters. The 'id' comes from the ':id' in the URL.
+    // It's a string by default, so we parse it to an integer.
+    const userId = parseInt(req.params.id);
 
-  // Find the user in our "database" array.
-  const user = users.find((u) => u.id === userId);
+    // Read the contents of the database file asynchronously
+    const data = await fs.readFile(DATA_FILE, "utf-8");
+    // Parse the JSON data into a Javascript array
+    const users = JSON.parse(data);
 
-  if (!user) {
-    // If the resource is not found, send a 404 status.
-    // Always provide a clear message.
-    return res.status(404).json({
-      message: `User with ID ${userId} not found.`,
-    });
+    // Find the user in our "database" array.
+    const user = users.find((u) => u.id === userId);
+
+    if (!user) {
+      // If the resource is not found, send a 404 status.
+      // Always provide a clear message.
+      return res.status(404).json({
+        message: `User with ID ${userId} not found.`,
+      });
+    }
+
+    // If the user is found, send it back as JSON.
+    res.json(user);
+  } catch (error) {
+    next(error);
   }
-
-  // If the user is found, send it back as JSON.
-  res.json(user);
 });
 
 // **description: Create a new user
