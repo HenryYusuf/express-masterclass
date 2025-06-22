@@ -1,0 +1,37 @@
+const express = require("express");
+
+// --- SETUP ---
+const app = express();
+const PORT = 3000;
+
+// --- CUSTOM MIDDLEWARE ---
+
+// This is a custom logger middleware.
+// It runs for every single request that comes into the server.
+const logger = (req, res, next) => {
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl}`);
+  next(); // CRUCIAL: Call next() to pass control to the next middleware/route
+};
+
+// --- GLOBAL MIDDLEWARE ---
+
+// We MUST register our middleware before our routes. The order is importabt.
+app.use(logger); // Use our custom logger for all requests
+
+// This is a built-in Express middleware.
+// It parses incoming request with JSON payloads. Without this, req.body would be undefined.
+app.use(express.json());
+
+// --- ROUTES ---
+
+// Import the user routes from the other filel
+const userRoutes = require("./routes/users");
+
+// Mount the user routes.
+// Any request starting with '/api/users' will be handled by the 'userRoutes' router.
+app.use("/api/users", userRoutes);
+
+// Start the server
+app.listen(PORT, () => {
+  console.log(`Server is running on http://localhost:${PORT}`);
+});
