@@ -6,6 +6,9 @@ const router = express.Router();
 // Database query function
 const db = require("../config/db");
 
+// Middleware
+const authenticate = require("../middleware/authenticate");
+
 // Node.js built-in modules for working with the file system
 const fs = require("fs/promises");
 const path = require("path");
@@ -13,16 +16,39 @@ const path = require("path");
 // --- ROUTES ---
 
 // **This route's path is now '/', but it will be mounted under '/api/users' in index.js
-// **description: Get all users
+// **description: Get all users (This route is now protected)
 // **route:       GET /api/users
-router.get("/", async (req, res, next) => {
+router.get("/", authenticate, async (req, res, next) => {
   try {
+    // Now we can access req.user.id if we need to know who is making the request
+    console.log("Authenticated user ID:", req.user.id);
+
     // db.query returns a promise, so we can use await
     const { rows } = await db.query("SELECT * FROM users ORDER BY id ASC");
     res.json(rows);
   } catch (error) {
     // If anything goes wrong (e.g., file not found, bad JSON),
     // pass the error to our centralized error handler.
+    next(error);
+  }
+});
+
+// We can protect other routes too. For example, a user should only be able to see their own profile.
+// **description: Get the profile of the currently logged-in user
+// **route:       GET /api/users/me
+router.get("/me", authenticate, async (req, res, next) => {
+  try {
+    const { rows } = await db.query(
+      "SELECT id, name, email FROM users WHERE id = $1",
+      [req.user.id]
+    );
+    if (rows.length === 0) {
+      return res.status(404).json({
+        message: "User not found",
+      });
+    }
+    res.json(rows[0]);
+  } catch (error) {
     next(error);
   }
 });

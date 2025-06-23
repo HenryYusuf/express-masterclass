@@ -40,6 +40,8 @@ app.use(express.json());
 // Import the user routes from the other file
 const userRoutes = require("./routes/users");
 app.use("/api/users", userRoutes);
+const authRoutes = require("./routes/auth");
+app.use("/api/auth", authRoutes);
 
 // --- CATCH-ALL ERROR HANDLING MIDDLEWARE ---
 // This middleware will run if any route handler calls next(error)
