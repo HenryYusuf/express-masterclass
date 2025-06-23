@@ -3,12 +3,12 @@ const express = require("express");
 // Create a new router object
 const router = express.Router();
 
+// Database query function
+const db = require("../config/db");
+
 // Node.js built-in modules for working with the file system
 const fs = require("fs/promises");
 const path = require("path");
-
-// Path to our JSON database file
-const DATA_FILE = path.join(__dirname, "..", "data", "users.json");
 
 // --- ROUTES ---
 
@@ -17,11 +17,9 @@ const DATA_FILE = path.join(__dirname, "..", "data", "users.json");
 // **route:       GET /api/users
 router.get("/", async (req, res, next) => {
   try {
-    // Read the contents of the database file asynchronously
-    const data = await fs.readFile(DATA_FILE, "utf-8");
-    // Parse the JSON data into a Javascript array
-    const users = JSON.parse(data);
-    res.json(users);
+    // db.query returns a promise, so we can use await
+    const { rows } = await db.query("SELECT * FROM users ORDER BY id ASC");
+    res.json(rows);
   } catch (error) {
     // If anything goes wrong (e.g., file not found, bad JSON),
     // pass the error to our centralized error handler.
@@ -33,28 +31,20 @@ router.get("/", async (req, res, next) => {
 // **route:       GET /api/users/:id
 router.get("/:id", async (req, res, next) => {
   try {
-    // req.params contains route parameters. The 'id' comes from the ':id' in the URL.
-    // It's a string by default, so we parse it to an integer.
-    const userId = parseInt(req.params.id);
+    const { id } = req.params;
 
-    // Read the contents of the database file asynchronously
-    const data = await fs.readFile(DATA_FILE, "utf-8");
-    // Parse the JSON data into a Javascript array
-    const users = JSON.parse(data);
+    // Always use parameterized queries to prevent SQL injection
+    // The driver (`pg`) sanitizes the input. '$1' is a placeholder for the first item in the array.
+    const sqlQuery = "SELECT * FROM users WHERE id = $1";
+    const { rows } = await db.query(sqlQuery, [id]);
 
-    // Find the user in our "database" array.
-    const user = users.find((u) => u.id === userId);
-
-    if (!user) {
-      // If the resource is not found, send a 404 status.
-      // Always provide a clear message.
+    if (rows.length === 0) {
       return res.status(404).json({
-        message: `User with ID ${userId} not found.`,
+        message: "User not found",
       });
     }
 
-    // If the user is found, send it back as JSON.
-    res.json(user);
+    res.json(rows[0]);
   } catch (error) {
     next(error);
   }
@@ -68,28 +58,67 @@ router.post("/", async (req, res, next) => {
     if (!name) {
       // For user input errors, we can send a specific error right away.
       return res.status(400).json({
-        message: "User name is required.",
+        message: "Name is required.",
       });
     }
 
-    // Read the current users
-    const data = await fs.readFile(DATA_FILE, "utf-8");
-    const users = JSON.parse(data);
+    // 'RETURNING *' is a PostgreSQL feature that returns the entire new row.
+    const sqlQuery = "INSERT INTO users (name) VALUES ($1) RETURNING *";
+    const { rows } = await db.query(sqlQuery, [name]);
 
-    // Create the new user
-    const newUser = {
-      // Simple ID generation (find the max current ID and add 1)
-      id: Math.max(...users.map((u) => u.id)) + 1,
-      name: name,
-    };
+    res.status(201).json(rows[0]);
+  } catch (error) {
+    next(error);
+  }
+});
 
-    users.push(newUser);
+// **description: Update an existing user's name
+// **route:       PUT /api/users/:id
+router.put("/:id", async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { name } = req.body;
 
-    // Write the entire updated array back to the file
-    // The 'null, 2' arguments pretty-print the JSON to make it readable
-    await fs.writeFile(DATA_FILE, JSON.stringify(users, null, 2));
+    if (!name) {
+      return res.status(404).json({
+        message: "Name is required",
+      });
+    }
 
-    res.status(201).json(newUser);
+    const sqlQuery = "UPDATE users SET name = $1 WHERE id = $2 RETURNING *";
+    const { rows } = await db.query(sqlQuery, [name, id]);
+
+    // Check if a row was actually updated. If not, the user was not found.
+    if (rows.length === 0) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    res.json(rows[0]);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// **description: Delete a user by their ID
+// **route:       DELETE /api/users/:id
+router.delete("/:id", async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    // The result object from a DELETE query contains a 'rowCount' property.
+    const sqlQuery = "DELETE FROM users WHERE id = $1";
+    const result = await db.query(sqlQuery, [id]);
+
+    // Check if any row was actually deleted.
+    if (result.rowCount === 0) {
+      return res.status(404).json({
+        message: "User not found",
+      });
+    }
+
+    // The standard, conventional response for a successful DELETE
+    // operation is a 204 "No Content" status with no response body.
+    res.status(204).json([]);
   } catch (error) {
     next(error);
   }
