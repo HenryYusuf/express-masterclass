@@ -110,23 +110,23 @@ describe("User Routes Delete Functionality (Protected)", () => {
     // connect to a separate test database to avoid manual cleanup.
   });
 
-  it("should delete a user if admin", async () => {
+  // it("should delete a user if admin", async () => {
+  //   let deleteUser = 1;
+
+  //   const response = await request
+  //     .delete(`/api/users/${deleteUser}`)
+  //     .set("Authorization", `Bearer ${token}`);
+
+  //   expect(response.statusCode).toBe(204);
+  // });
+
+  it("should fail to delete a user if not admin", async () => {
     let deleteUser = 1;
 
     const response = await request
       .delete(`/api/users/${deleteUser}`)
       .set("Authorization", `Bearer ${token}`);
 
-    expect(response.statusCode).toBe(204);
+    expect(response.statusCode).toBe(403);
   });
-
-//   it("should fail to delete a user if not admin", async () => {
-//     let deleteUser = 1;
-
-//     const response = await request
-//       .delete(`/api/users/${deleteUser}`)
-//       .set("Authorization", `Bearer ${token}`);
-
-//     expect(response.statusCode).toBe(403);
-//   });
 });

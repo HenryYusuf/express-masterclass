@@ -4,18 +4,14 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const db = require("../config/db");
 
+// validators
+const { registerRules, validate } = require("../middleware/validators");
+
 // **description: Register a new user
 // **route:       POST /api/auth/register
-router.post("/register", async (req, res, next) => {
+router.post("/register", registerRules(), validate, async (req, res, next) => {
   try {
     const { name, email, password } = req.body;
-
-    // Validate input
-    if (!name || !email || !password) {
-      return res.status(400).json({
-        message: "Please enter all fields",
-      });
-    }
 
     // Check if user already exists
     const userExistsResult = await db.query(

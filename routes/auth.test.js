@@ -54,7 +54,7 @@ describe("Auth Routes", () => {
 
     // Assert the response (check if it's what we expect)
     expect(response.statusCode).toBe(400); // Check for a "400 Bad Request" status
-    expect(response.body.message).toBe("Please enter all fields");
+    expect(response.body.errors[0]["email"]).toBe("Please include a valid email");
   });
 
   it("should fail to register a user if name is empty", async () => {
@@ -70,7 +70,7 @@ describe("Auth Routes", () => {
 
     // Assert the response (check if it's what we expect)
     expect(response.statusCode).toBe(400); // Check for a "400 Bad Request" status
-    expect(response.body.message).toBe("Please enter all fields");
+    expect(response.body.errors[0]["name"]).toBe("Name is required");
   });
 
   it("should fail to register a user if password is empty", async () => {
@@ -86,7 +86,7 @@ describe("Auth Routes", () => {
 
     // Assert the response (check if it's what we expect)
     expect(response.statusCode).toBe(400); // Check for a "400 Bad Request" status
-    expect(response.body.message).toBe("Please enter all fields");
+    expect(response.body.errors[0]["password"]).toBe("Password must be at least 8 characters long");
   });
 
   it("should fail to register a user with a duplicate email", async () => {
