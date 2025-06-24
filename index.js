@@ -18,6 +18,7 @@ const logger = (req, res, next) => {
 
 // --- GLOBAL MIDDLEWARE ---
 
+// We MUST register our middleware before our routes. The order is importabt.
 // The order of global middleware matters.
 // CORS: Handle cross-origin request first.
 app.use(cors());
@@ -25,7 +26,6 @@ app.use(cors());
 // Helmet: Apply security headers early.
 app.use(helmet());
 
-// We MUST register our middleware before our routes. The order is importabt.
 // Logger: Log the request.
 app.use(logger); // Use our custom logger for all requests
 
@@ -35,13 +35,13 @@ app.use(logger); // Use our custom logger for all requests
 app.use(express.json());
 
 // --- ROUTES ---
+const authRoutes = require("./routes/auth");
+app.use("/api/auth", authRoutes);
 // Mount the user routes.
 // Any request starting with '/api/users' will be handled by the 'userRoutes' router.
 // Import the user routes from the other file
 const userRoutes = require("./routes/users");
 app.use("/api/users", userRoutes);
-const authRoutes = require("./routes/auth");
-app.use("/api/auth", authRoutes);
 
 // --- CATCH-ALL ERROR HANDLING MIDDLEWARE ---
 // This middleware will run if any route handler calls next(error)

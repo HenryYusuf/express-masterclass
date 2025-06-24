@@ -8,6 +8,7 @@ const db = require("../config/db");
 
 // Middleware
 const authenticate = require("../middleware/authenticate");
+const authorizeAdmin = require("../middleware/authorizeAdmin");
 
 // Node.js built-in modules for working with the file system
 const fs = require("fs/promises");
@@ -55,7 +56,7 @@ router.get("/me", authenticate, async (req, res, next) => {
 
 // **description: Get a single user by their ID
 // **route:       GET /api/users/:id
-router.get("/:id", async (req, res, next) => {
+router.get("/:id", authenticate, async (req, res, next) => {
   try {
     const { id } = req.params;
 
@@ -78,7 +79,7 @@ router.get("/:id", async (req, res, next) => {
 
 // **description: Create a new user
 // **route:       POST /api/users
-router.post("/", async (req, res, next) => {
+router.post("/", authenticate, async (req, res, next) => {
   try {
     const { name } = req.body;
     if (!name) {
@@ -100,7 +101,7 @@ router.post("/", async (req, res, next) => {
 
 // **description: Update an existing user's name
 // **route:       PUT /api/users/:id
-router.put("/:id", async (req, res, next) => {
+router.put("/:id", authenticate, async (req, res, next) => {
   try {
     const { id } = req.params;
     const { name } = req.body;
@@ -127,28 +128,32 @@ router.put("/:id", async (req, res, next) => {
 
 // **description: Delete a user by their ID
 // **route:       DELETE /api/users/:id
-router.delete("/:id", async (req, res, next) => {
-  try {
-    const { id } = req.params;
+router.delete(
+  "/:id",
+  [authenticate, authorizeAdmin],
+  async (req, res, next) => {
+    try {
+      const { id } = req.params;
 
-    // The result object from a DELETE query contains a 'rowCount' property.
-    const sqlQuery = "DELETE FROM users WHERE id = $1";
-    const result = await db.query(sqlQuery, [id]);
+      // The result object from a DELETE query contains a 'rowCount' property.
+      const sqlQuery = "DELETE FROM users WHERE id = $1";
+      const result = await db.query(sqlQuery, [id]);
 
-    // Check if any row was actually deleted.
-    if (result.rowCount === 0) {
-      return res.status(404).json({
-        message: "User not found",
-      });
+      // Check if any row was actually deleted.
+      if (result.rowCount === 0) {
+        return res.status(404).json({
+          message: "User not found",
+        });
+      }
+
+      // The standard, conventional response for a successful DELETE
+      // operation is a 204 "No Content" status with no response body.
+      res.status(204).json([]);
+    } catch (error) {
+      next(error);
     }
-
-    // The standard, conventional response for a successful DELETE
-    // operation is a 204 "No Content" status with no response body.
-    res.status(204).json([]);
-  } catch (error) {
-    next(error);
   }
-});
+);
 
 // Export the router
 module.exports = router;

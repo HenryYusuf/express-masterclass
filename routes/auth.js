@@ -88,6 +88,7 @@ router.post("/login", async (req, res, next) => {
     const payload = {
       user: {
         id: user.id, // We'll use the user ID in our protected routes
+        role: user.role,
       },
     };
 
